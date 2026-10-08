@@ -92,6 +92,11 @@ textarea{min-height:240px;font-family:ui-monospace,Menlo,Consolas,monospace;font
 .res tr.bad .yours{color:var(--bad);text-decoration:line-through}
 .res tr.bad .yours.blank{text-decoration:none}
 .tag{font-size:11px;color:var(--sub)}
+.hist{display:flex;justify-content:space-between;align-items:center;gap:10px;width:100%;text-align:left;border:0;border-top:1px solid var(--line);background:transparent;color:var(--ink);padding:12px 2px;font:inherit;cursor:pointer}
+.hist:first-child{border-top:0}
+.hist b{font-size:15px}
+.hist .sub{display:block;color:var(--sub);font-size:12px;margin-top:3px}
+.hist .pct{font-weight:800;font-size:18px;font-variant-numeric:tabular-nums}
 .hidden{display:none !important}
 </style>
 </head>
@@ -101,7 +106,8 @@ textarea{min-height:240px;font-family:ui-monospace,Menlo,Consolas,monospace;font
     <h1>단어 테스트</h1>
     <nav class="tabs" id="tabs">
       <button data-view="setup" class="on">시험</button>
-      <button data-view="data">단어 데이터</button>
+      <button data-view="history">기록</button>
+      <button data-view="data">단어</button>
     </nav>
   </header>
 
@@ -111,6 +117,15 @@ textarea{min-height:240px;font-family:ui-monospace,Menlo,Consolas,monospace;font
       아직 단어가 없어요.<br>
       <b>단어 데이터</b> 탭에서 단어를 넣거나 기본 단어장으로 되돌려 주세요.
       <div style="margin-top:14px"><button class="btn primary" data-goto="data">단어 불러오기</button></div>
+    </div>
+
+    <div id="resumeCard" class="card hidden" style="border-color:var(--brand)">
+      <h2>풀다 만 시험이 있어요</h2>
+      <p class="hint" id="resumeInfo"></p>
+      <div class="row">
+        <button class="btn primary" id="resumeBtn">이어서 풀기</button>
+        <button class="btn" id="discardBtn">버리기</button>
+      </div>
     </div>
 
     <div id="setupForm" class="hidden">
@@ -136,6 +151,9 @@ textarea{min-height:240px;font-family:ui-monospace,Menlo,Consolas,monospace;font
 
       <div class="card">
         <h2>문제 설정</h2>
+        <label class="field" for="stName">이름 (결과 보낼 때 표시)</label>
+        <input type="text" id="stName" placeholder="예: 김민준" autocomplete="name" maxlength="20">
+
         <label class="field" for="qCount">문제 수</label>
         <div class="inline">
           <input type="number" id="qCount" min="1" value="20" inputmode="numeric">
@@ -161,6 +179,22 @@ textarea{min-height:240px;font-family:ui-monospace,Menlo,Consolas,monospace;font
       </div>
 
       <button class="btn primary big" id="startBtn">시험 시작</button>
+    </div>
+  </section>
+
+  <!-- ===== 기록 ===== -->
+  <section id="view-history" class="hidden">
+    <div class="card">
+      <div class="row" style="justify-content:space-between">
+        <h2>시험 기록</h2>
+        <div class="row">
+          <button class="btn small" id="csvBtn">엑셀용 저장(CSV)</button>
+          <button class="btn small" id="clearHist">전체 삭제</button>
+        </div>
+      </div>
+      <p class="hint">이 기기에 저장돼요. 누르면 자세히 보고 다시 보낼 수 있어요.</p>
+      <div id="histStats" class="status" style="margin:0 0 10px"></div>
+      <div id="histList"></div>
     </div>
   </section>
 
@@ -220,6 +254,16 @@ textarea{min-height:240px;font-family:ui-monospace,Menlo,Consolas,monospace;font
         <label class="row" style="gap:6px;font-size:14px;margin-left:auto"><input type="checkbox" id="onlyWrong"> 틀린 것만 보기</label>
       </div>
     </div>
+    <div class="card">
+      <h2>결과 저장 · 보내기</h2>
+      <p class="hint" id="savedNote">이 결과는 <b>기록</b> 탭에 자동 저장됐어요.</p>
+      <div class="row">
+        <button class="btn primary" id="shareBtn">결과 보내기</button>
+        <button class="btn" id="copyBtn">복사</button>
+        <button class="btn" id="txtBtn">파일로 저장</button>
+      </div>
+      <div class="status" id="shareStatus"></div>
+    </div>
     <div class="card" style="padding:6px 12px">
       <table class="res"><tbody id="resBody"></tbody></table>
     </div>
@@ -246,10 +290,11 @@ const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">"
 
 /* ---------- 화면 전환 ---------- */
 function show(view){
-  ["setup","data","test","result"].forEach(v => $("#view-"+v).classList.toggle("hidden", v !== view));
+  ["setup","data","test","result","history"].forEach(v => $("#view-"+v).classList.toggle("hidden", v !== view));
   $$("#tabs button").forEach(b => b.classList.toggle("on", b.dataset.view === view));
   $("#tabs").classList.toggle("hidden", view === "test");
   if(view === "setup") renderSetup();
+  if(view === "history") renderHistory();
   if(view === "data"){ $("#dataText").value = unitsToText(units); renderSource(); }
   window.scrollTo(0,0);
 }
@@ -302,6 +347,7 @@ $("#resetData").addEventListener("click", () => {
 const settings = Object.assign({ selected: [], count: 20, minutes: 10, mode: "mix" }, load(SETTINGS_KEY) || {});
 
 function renderSetup(){
+  renderResume();
   const has = units.length > 0;
   $("#noData").classList.toggle("hidden", has);
   $("#setupForm").classList.toggle("hidden", !has);
@@ -311,6 +357,7 @@ function renderSetup(){
   $("#unitChips").innerHTML = units.map((u,i) =>
     `<label class="chip"><input type="checkbox" value="${i}" ${sel.has(u.label) ? "checked" : ""}><span>${esc(u.label)}<small>${u.words.length}단어</small></span></label>`
   ).join("");
+  $("#stName").value = settings.name || "";
   $("#qCount").value = settings.count;
   $("#tLimit").value = settings.minutes;
   $$("input[name=mode]").forEach(r => r.checked = r.value === settings.mode);
@@ -409,14 +456,22 @@ function grade(q, ans){
 let test = null, tick = null;
 function shuffle(a){ for(let i = a.length-1; i > 0; i--){ const j = Math.floor(Math.random()*(i+1)); [a[i],a[j]] = [a[j],a[i]]; } return a; }
 
-function startTest(words, minutes, mode){
+function resumeTimers(){
+  renderNav(); renderQ(); show("test");
+  clearInterval(tick);
+  tick = setInterval(updateTimer, 250); updateTimer();
+  setTimeout(() => $("#qAnswer").focus(), 50);
+}
+function startTest(words, minutes, mode, scope){
   const picked = shuffle(words.slice());
   const types = picked.map((_, i) => mode === "mix" ? (i % 2 ? "spell" : "meaning") : mode);
   shuffle(types);
   test = {
     qs: picked.map((w, i) => ({ word: w, type: types[i], answer: "", override: false })),
-    i: 0, start: Date.now(), limitMs: minutes > 0 ? minutes * 60000 : 0, endedAt: null, mode, minutes
+    i: 0, start: Date.now(), limitMs: minutes > 0 ? minutes * 60000 : 0, endedAt: null, mode, minutes,
+    scope: scope || "", name: settings.name || ""
   };
+  saveProgress();
   renderNav(); renderQ(); show("test");
   clearInterval(tick);
   tick = setInterval(updateTimer, 250); updateTimer();
@@ -430,8 +485,9 @@ $("#startBtn").addEventListener("click", () => {
   const mode = ($$("input[name=mode]").find(r => r.checked) || {}).value || "mix";
   settings.selected = selectedUnits().map(u => u.label);
   settings.count = n; settings.minutes = m; settings.mode = mode;
+  settings.name = $("#stName").value.trim();
   save(SETTINGS_KEY, settings);
-  startTest(shuffle(p.slice()).slice(0, n), m, mode);
+  startTest(shuffle(p.slice()).slice(0, n), m, mode, scopeLabel(selectedUnits().map(u => u.label)));
 });
 
 function fmt(ms){
@@ -451,7 +507,7 @@ function updateTimer(){
   }
 }
 
-function saveCurrent(){ if(test) test.qs[test.i].answer = $("#qAnswer").value; }
+function saveCurrent(){ if(test && !test.endedAt){ test.qs[test.i].answer = $("#qAnswer").value; saveProgress(); } }
 function renderQ(){
   const q = test.qs[test.i], n = test.qs.length;
   const spell = q.type === "spell";
@@ -476,7 +532,7 @@ function renderQ(){
 function renderNav(){
   $("#qNav").innerHTML = test.qs.map((_, k) => `<button data-k="${k}">${k+1}</button>`).join("");
 }
-function go(k){ saveCurrent(); test.i = Math.max(0, Math.min(test.qs.length-1, k)); renderQ(); $("#qAnswer").focus(); }
+function go(k){ saveCurrent(); test.i = Math.max(0, Math.min(test.qs.length-1, k)); saveProgress(); renderQ(); $("#qAnswer").focus(); }
 
 $("#qNav").addEventListener("click", e => { const b = e.target.closest("button"); if(b) go(+b.dataset.k); });
 $("#prevBtn").addEventListener("click", () => go(test.i - 1));
@@ -501,7 +557,11 @@ function finish(timeUp){
   clearInterval(tick);
   test.endedAt = Date.now(); test.timeUp = timeUp;
   test.qs.forEach(q => q.correct = grade(q, q.answer));
+  clearProgress();
+  test.recordId = addRecord(test);
   if(timeUp) alert("시간 끝! 자동으로 제출했어요.");
+  $("#shareStatus").textContent = "";
+  $("#savedNote").innerHTML = test.recordId ? "이 결과는 <b>기록</b> 탭에 자동 저장됐어요." : "이 기기에 저장 공간이 없어 기록 저장은 실패했어요. 보내기·파일 저장은 돼요.";
   renderResult(); show("result");
 }
 
@@ -510,7 +570,7 @@ function isRight(q){ return q.correct || q.override; }
 function renderResult(){
   const n = test.qs.length, right = test.qs.filter(isRight).length;
   $("#resScore").textContent = right + " / " + n + "  (" + Math.round(right/n*100) + "점)";
-  $("#resMeta").textContent = "걸린 시간 " + fmt(test.endedAt - test.start) + (test.timeUp ? " · 시간 초과로 자동 제출" : "");
+  $("#resMeta").textContent = [test.name, test.scope, fmtDate(test.endedAt), "걸린 시간 " + fmt(test.endedAt - test.start) + (test.timeUp ? " (시간 초과)" : "")].filter(Boolean).join(" · ");
   const onlyWrong = $("#onlyWrong").checked;
   $("#resBody").innerHTML = test.qs.map((q, k) => {
     const ok = isRight(q);
@@ -533,14 +593,192 @@ function renderResult(){
 }
 $("#resBody").addEventListener("click", e => {
   const b = e.target.closest("[data-ov]"); if(!b) return;
-  const q = test.qs[+b.dataset.ov]; q.override = !q.override; renderResult();
+  const q = test.qs[+b.dataset.ov]; q.override = !q.override; updateRecord(test); renderResult();
 });
 $("#onlyWrong").addEventListener("change", renderResult);
 $("#retryWrong").addEventListener("click", () => {
   const wrong = test.qs.filter(q => !isRight(q)).map(q => q.word);
-  if(wrong.length) startTest(wrong, test.minutes, test.mode);
+  if(wrong.length) startTest(wrong, test.minutes, test.mode, (test.scope || "") + " 오답");
 });
 $("#newTest").addEventListener("click", () => { test = null; show("setup"); });
+$("#tabs").addEventListener("click", () => { if(test && test.endedAt) test = null; });
+
+/* ---------- 범위 이름 ---------- */
+function scopeLabel(labels){
+  const nums = labels.map(l => (l.match(/^DAY\s*(\d+)$/) || [])[1]).map(Number);
+  if(!labels.length) return "";
+  if(nums.some(n => !n)) return labels.join(", ");
+  nums.sort((a,b) => a-b);
+  const parts = []; let s = nums[0], prev = nums[0];
+  const pad = n => String(n).padStart(2, "0");
+  for(let i = 1; i <= nums.length; i++){
+    if(nums[i] === prev + 1){ prev = nums[i]; continue; }
+    parts.push(s === prev ? pad(s) : pad(s) + "~" + pad(prev));
+    s = prev = nums[i];
+  }
+  return "DAY " + parts.join(", ");
+}
+function fmtDate(t){
+  const d = new Date(t), p = n => String(n).padStart(2, "0");
+  return d.getFullYear() + "-" + p(d.getMonth()+1) + "-" + p(d.getDate()) + " " + p(d.getHours()) + ":" + p(d.getMinutes());
+}
+const MODE_NAME = { mix: "섞기", meaning: "뜻 쓰기", spell: "철자 쓰기" };
+
+/* ---------- 기록 저장 ---------- */
+const HIST_KEY = "vocabTest.history.v1";
+const HIST_MAX = 300;
+function loadHist(){ return load(HIST_KEY) || []; }
+function saveHist(list){ try{ localStorage.setItem(HIST_KEY, JSON.stringify(list)); return true; }catch(e){ return false; } }
+function toRecord(t){
+  const right = t.qs.filter(isRight).length;
+  return {
+    id: t.recordId || ("r" + t.start), name: t.name || "", scope: t.scope || "", mode: t.mode, minutes: t.minutes,
+    start: t.start, end: t.endedAt, timeUp: !!t.timeUp, right, total: t.qs.length,
+    items: t.qs.map(q => ({ en: q.word.en, ko: q.word.ko, type: q.type, answer: q.answer, correct: !!q.correct, override: !!q.override }))
+  };
+}
+function addRecord(t){
+  const rec = toRecord(t), list = loadHist();
+  list.unshift(rec);
+  return saveHist(list.slice(0, HIST_MAX)) ? rec.id : null;
+}
+function updateRecord(t){
+  if(!t.recordId) return;
+  const list = loadHist(), i = list.findIndex(r => r.id === t.recordId);
+  if(i >= 0){ list[i] = toRecord(t); saveHist(list); }
+}
+function recordToTest(r){
+  return {
+    qs: r.items.map(x => ({ word: { en: x.en, ko: x.ko }, type: x.type, answer: x.answer, correct: x.correct, override: x.override })),
+    i: 0, start: r.start, endedAt: r.end, timeUp: r.timeUp, mode: r.mode, minutes: r.minutes,
+    scope: r.scope, name: r.name, recordId: r.id, limitMs: 0
+  };
+}
+function renderHistory(){
+  const list = loadHist();
+  $("#csvBtn").disabled = $("#clearHist").disabled = !list.length;
+  if(!list.length){
+    $("#histStats").textContent = "";
+    $("#histList").innerHTML = `<div class="empty">아직 기록이 없어요. 시험을 보면 여기에 쌓여요.</div>`;
+    return;
+  }
+  const avg = Math.round(list.reduce((s,r) => s + r.right / r.total, 0) / list.length * 100);
+  $("#histStats").textContent = "총 " + list.length + "번 · 평균 " + avg + "점";
+  $("#histList").innerHTML = list.map(r => {
+    const pct = Math.round(r.right / r.total * 100);
+    return `<button class="hist" data-rid="${esc(r.id)}">
+      <span><b>${esc(r.scope || "시험")}</b>
+        <span class="sub">${esc(fmtDate(r.end))} · ${r.total}문제 · ${MODE_NAME[r.mode] || ""}${r.name ? " · " + esc(r.name) : ""}</span></span>
+      <span class="pct" style="color:${pct >= 80 ? "var(--ok)" : pct >= 50 ? "var(--warn)" : "var(--bad)"}">${pct}</span>
+    </button>`;
+  }).join("");
+}
+$("#histList").addEventListener("click", e => {
+  const b = e.target.closest("[data-rid]"); if(!b) return;
+  const r = loadHist().find(x => x.id === b.dataset.rid); if(!r) return;
+  test = recordToTest(r);
+  $("#shareStatus").textContent = "";
+  $("#savedNote").innerHTML = "저장된 기록이에요.";
+  $("#onlyWrong").checked = false;
+  renderResult(); show("result");
+});
+$("#clearHist").addEventListener("click", () => {
+  if(!confirm("시험 기록을 모두 지울까요? 되돌릴 수 없어요.")) return;
+  try{ localStorage.removeItem(HIST_KEY); }catch(e){}
+  renderHistory();
+});
+
+/* ---------- 결과 보내기 ---------- */
+function resultText(t){
+  const right = t.qs.filter(isRight).length, n = t.qs.length;
+  const lines = [
+    "[단어 테스트 결과]",
+    t.name ? "이름: " + t.name : null,
+    "날짜: " + fmtDate(t.endedAt),
+    "범위: " + (t.scope || "-") + " (" + BOOK + ")",
+    "문제: " + n + "문제 · " + (MODE_NAME[t.mode] || "") + " · 제한 " + (t.minutes ? t.minutes + "분" : "없음"),
+    "점수: " + right + " / " + n + " (" + Math.round(right/n*100) + "점) · 걸린 시간 " + fmt(t.endedAt - t.start) + (t.timeUp ? " (시간 초과)" : "")
+  ].filter(Boolean);
+  const wrong = t.qs.map((q, k) => ({ q, k })).filter(x => !isRight(x.q));
+  if(wrong.length){
+    lines.push("", "틀린 문제 " + wrong.length + "개:");
+    wrong.forEach(({ q, k }) => {
+      const spell = q.type === "spell";
+      lines.push((k+1) + ". [" + (spell ? "철자" : "뜻") + "] " + (spell ? q.word.ko : q.word.en)
+        + " → 쓴 답: " + (q.answer.trim() || "(빈칸)") + " / 정답: " + (spell ? q.word.en : q.word.ko));
+    });
+  }else lines.push("", "전부 맞았어요!");
+  const ov = t.qs.filter(q => q.override).length;
+  if(ov) lines.push("", "※ 직접 정답 인정한 문제 " + ov + "개 포함");
+  return lines.join("\n");
+}
+function setShareStatus(msg, ok){ const s = $("#shareStatus"); s.className = "status " + (ok ? "ok" : "err"); s.textContent = msg; }
+async function copyText(text){
+  try{ await navigator.clipboard.writeText(text); return true; }
+  catch(e){
+    const ta = document.createElement("textarea"); ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+    document.body.appendChild(ta); ta.select();
+    let ok = false; try{ ok = document.execCommand("copy"); }catch(_){}
+    ta.remove(); return ok;
+  }
+}
+function download(name, text, type){
+  const blob = new Blob(["﻿" + text], { type: type + ";charset=utf-8" });
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+function fileStamp(t){ return fmtDate(t).replace(/[-: ]/g, "").slice(0, 12); }
+$("#shareBtn").addEventListener("click", async () => {
+  const text = resultText(test);
+  if(navigator.share){
+    try{ await navigator.share({ title: "단어 테스트 결과", text }); setShareStatus("보냈어요.", true); return; }
+    catch(e){ if(e && e.name === "AbortError") return; }
+  }
+  setShareStatus(await copyText(text) ? "이 기기는 바로 보내기를 지원하지 않아서 복사했어요. 카톡·문자에 붙여넣으세요." : "보내기와 복사가 모두 막혔어요. '파일로 저장'을 써주세요.", true);
+});
+$("#copyBtn").addEventListener("click", async () => {
+  setShareStatus(await copyText(resultText(test)) ? "복사했어요. 카톡·문자·메일에 붙여넣으세요." : "복사가 막혔어요. '파일로 저장'을 써주세요.", true);
+});
+$("#txtBtn").addEventListener("click", () => {
+  download("단어테스트_" + (test.name ? test.name + "_" : "") + fileStamp(test.endedAt) + ".txt", resultText(test), "text/plain");
+  setShareStatus("파일로 저장했어요.", true);
+});
+$("#csvBtn").addEventListener("click", () => {
+  const q = v => '"' + String(v ?? "").replace(/"/g, '""') + '"';
+  const rows = [["날짜","이름","범위","유형","문제수","맞은수","점수","걸린시간","시간초과","틀린 단어"]];
+  loadHist().forEach(r => {
+    const wrong = r.items.filter(x => !(x.correct || x.override)).map(x => x.en).join(", ");
+    rows.push([fmtDate(r.end), r.name, r.scope, MODE_NAME[r.mode] || r.mode, r.total, r.right, Math.round(r.right/r.total*100), fmt(r.end - r.start), r.timeUp ? "O" : "", wrong]);
+  });
+  download("단어테스트_기록_" + fileStamp(Date.now()) + ".csv", rows.map(r => r.map(q).join(",")).join("\r\n"), "text/csv");
+});
+
+/* ---------- 풀다 만 시험 저장 (앱을 닫아도 이어 풀기) ---------- */
+const PROG_KEY = "vocabTest.progress.v1";
+function saveProgress(){ if(test && !test.endedAt) save(PROG_KEY, { ...test, savedAt: Date.now() }); }
+function clearProgress(){ try{ localStorage.removeItem(PROG_KEY); }catch(e){} }
+function renderResume(){
+  const p = load(PROG_KEY);
+  const card = $("#resumeCard");
+  if(!p || !p.qs || !p.qs.length || (test && !test.endedAt)){ card.classList.add("hidden"); return; }
+  const done = p.qs.filter(q => q.answer && q.answer.trim()).length;
+  let info = (p.scope || "시험") + " · " + done + " / " + p.qs.length + "문제 풀었음";
+  if(p.limitMs){
+    const left = p.limitMs - (Date.now() - p.start);
+    info += left > 0 ? " · 남은 시간 " + fmt(left) : " · 제한 시간이 지났어요 (이어 풀면 바로 제출돼요)";
+  }
+  $("#resumeInfo").textContent = info;
+  card.classList.remove("hidden");
+}
+$("#resumeBtn").addEventListener("click", () => {
+  const p = load(PROG_KEY); if(!p) return;
+  delete p.savedAt; test = p; resumeTimers();
+});
+$("#discardBtn").addEventListener("click", () => {
+  if(!confirm("풀던 시험을 버릴까요?")) return;
+  clearProgress(); renderResume();
+});
 
 /* 시험 중 페이지 이탈 경고 */
 window.addEventListener("beforeunload", e => { if(test && !test.endedAt){ e.preventDefault(); e.returnValue = ""; } });
