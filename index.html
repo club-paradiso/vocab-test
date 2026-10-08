@@ -416,6 +416,7 @@ function koVariants(meaning){
     [m, noParen].forEach(x => out.add(stripKo(x.replace(/^\s*[~∼]\s*[을를이가에의와과은는]?\s*/, ""))));
   };
   splitTop(meaning).forEach(sense => {
+    out.add(stripKo(sense));                                  // 괄호까지 그대로 쓴 경우
     const base = sense.replace(/\[[^\]]*\]/g, " ");          // 대괄호 내용 빼기
     add(base);
     // 대체 표현: 앞 단어의 끝부분을 괄호 안 표현으로 바꿈
@@ -444,7 +445,10 @@ function enVariants(word){
 function grade(q, ans){
   const a = ans.trim(); if(!a) return false;
   if(q.type === "spell"){
-    const v = enVariants(q.word.en);
+    // 뜻이 똑같은 다른 단어도 정답 (예: 쓰레기 = garbage / trash)
+    const v = new Set();
+    units.forEach(u => u.words.forEach(w => { if(w.ko === q.word.ko) enVariants(w.en).forEach(x => v.add(x)); }));
+    enVariants(q.word.en).forEach(x => v.add(x));
     const norm = a.toLowerCase().replace(/[’]/g, "'").replace(/\s+/g, " ").replace(/[.]$/, "").trim();
     return v.has(norm);
   }
