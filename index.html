@@ -154,6 +154,12 @@ textarea{min-height:240px;font-family:ui-monospace,Menlo,Consolas,monospace;font
         <label class="field" for="stName">이름 (결과 보낼 때 표시)</label>
         <input type="text" id="stName" placeholder="예: 김민준" autocomplete="name" maxlength="20">
 
+        <label class="field" for="clsCode">반 코드 <span class="hint" style="font-weight:400">(선생님께 받은 6자리 · 없으면 비워두기)</span></label>
+        <div class="inline">
+          <input type="text" id="clsCode" placeholder="예: QANJBH" maxlength="6" autocapitalize="characters" autocomplete="off" spellcheck="false" style="max-width:160px;text-transform:uppercase">
+          <span class="hint" style="margin:0" id="clsInfo"></span>
+        </div>
+
         <label class="field" for="qCount">문제 수</label>
         <div class="inline">
           <input type="number" id="qCount" min="1" value="20" inputmode="numeric">
@@ -257,6 +263,7 @@ textarea{min-height:240px;font-family:ui-monospace,Menlo,Consolas,monospace;font
     <div class="card">
       <h2>결과 저장 · 보내기</h2>
       <p class="hint" id="savedNote">이 결과는 <b>기록</b> 탭에 자동 저장됐어요.</p>
+      <div class="status" id="teacherStatus" style="margin:-4px 0 12px"></div>
       <div class="row">
         <button class="btn primary" id="shareBtn">결과 보내기</button>
         <button class="btn" id="copyBtn">복사</button>
@@ -270,6 +277,7 @@ textarea{min-height:240px;font-family:ui-monospace,Menlo,Consolas,monospace;font
   </section>
 </div>
 
+<p style="text-align:center;margin:8px 0 24px"><a href="teacher.html" style="color:var(--sub);font-size:13px">선생님 페이지 →</a></p>
 <script>
 "use strict";
 /* ---------- 저장소 (실패해도 동작) ---------- */
@@ -358,6 +366,8 @@ function renderSetup(){
     `<label class="chip"><input type="checkbox" value="${i}" ${sel.has(u.label) ? "checked" : ""}><span>${esc(u.label)}<small>${u.words.length}단어</small></span></label>`
   ).join("");
   $("#stName").value = settings.name || "";
+  $("#clsCode").value = settings.classCode || "";
+  checkClass();
   $("#qCount").value = settings.count;
   $("#tLimit").value = settings.minutes;
   $$("input[name=mode]").forEach(r => r.checked = r.value === settings.mode);
@@ -473,7 +483,8 @@ function startTest(words, minutes, mode, scope){
   test = {
     qs: picked.map((w, i) => ({ word: w, type: types[i], answer: "", override: false })),
     i: 0, start: Date.now(), limitMs: minutes > 0 ? minutes * 60000 : 0, endedAt: null, mode, minutes,
-    scope: scope || "", name: settings.name || ""
+    scope: scope || "", name: settings.name || "", classCode: settings.classCode || "",
+    clientId: Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 10)
   };
   saveProgress();
   renderNav(); renderQ(); show("test");
@@ -490,6 +501,8 @@ $("#startBtn").addEventListener("click", () => {
   settings.selected = selectedUnits().map(u => u.label);
   settings.count = n; settings.minutes = m; settings.mode = mode;
   settings.name = $("#stName").value.trim();
+  settings.classCode = normCode($("#clsCode").value);
+  if(settings.classCode && !settings.name){ alert("반 코드를 넣었으면 선생님이 알아볼 수 있게 이름도 써주세요."); $("#stName").focus(); return; }
   save(SETTINGS_KEY, settings);
   startTest(shuffle(p.slice()).slice(0, n), m, mode, scopeLabel(selectedUnits().map(u => u.label)));
 });
@@ -567,6 +580,7 @@ function finish(timeUp){
   $("#shareStatus").textContent = "";
   $("#savedNote").innerHTML = test.recordId ? "이 결과는 <b>기록</b> 탭에 자동 저장됐어요." : "이 기기에 저장 공간이 없어 기록 저장은 실패했어요. 보내기·파일 저장은 돼요.";
   renderResult(); show("result");
+  sendToTeacher(test);
 }
 
 /* ---------- 결과 ---------- */
@@ -598,6 +612,7 @@ function renderResult(){
 $("#resBody").addEventListener("click", e => {
   const b = e.target.closest("[data-ov]"); if(!b) return;
   const q = test.qs[+b.dataset.ov]; q.override = !q.override; updateRecord(test); renderResult();
+  if(test.classCode && test.clientId) sendToTeacher(test, true);
 });
 $("#onlyWrong").addEventListener("change", renderResult);
 $("#retryWrong").addEventListener("click", () => {
@@ -637,6 +652,7 @@ function toRecord(t){
   const right = t.qs.filter(isRight).length;
   return {
     id: t.recordId || ("r" + t.start), name: t.name || "", scope: t.scope || "", mode: t.mode, minutes: t.minutes,
+    classCode: t.classCode || "", clientId: t.clientId || "",
     start: t.start, end: t.endedAt, timeUp: !!t.timeUp, right, total: t.qs.length,
     items: t.qs.map(q => ({ en: q.word.en, ko: q.word.ko, type: q.type, answer: q.answer, correct: !!q.correct, override: !!q.override }))
   };
@@ -655,7 +671,7 @@ function recordToTest(r){
   return {
     qs: r.items.map(x => ({ word: { en: x.en, ko: x.ko }, type: x.type, answer: x.answer, correct: x.correct, override: x.override })),
     i: 0, start: r.start, endedAt: r.end, timeUp: r.timeUp, mode: r.mode, minutes: r.minutes,
-    scope: r.scope, name: r.name, recordId: r.id, limitMs: 0
+    scope: r.scope, name: r.name, recordId: r.id, limitMs: 0, classCode: r.classCode || "", clientId: r.clientId || ""
   };
 }
 function renderHistory(){
@@ -683,6 +699,7 @@ $("#histList").addEventListener("click", e => {
   test = recordToTest(r);
   $("#shareStatus").textContent = "";
   $("#savedNote").innerHTML = "저장된 기록이에요.";
+  showTeacherStatus(test);
   $("#onlyWrong").checked = false;
   renderResult(); show("result");
 });
@@ -757,6 +774,108 @@ $("#csvBtn").addEventListener("click", () => {
   });
   download("단어테스트_기록_" + fileStamp(Date.now()) + ".csv", rows.map(r => r.map(q).join(",")).join("\r\n"), "text/csv");
 });
+
+/* ---------- 선생님께 전송 (Supabase) ---------- */
+const SB_URL = "https://cszgcpovyrbhbalivdnm.supabase.co";
+const SB_KEY = "sb_publishable_lQRvNmhVHqr0r8V28wh9ig_Ovjy_2iT";
+const OUTBOX_KEY = "vocabTest.outbox.v1";
+async function rpc(fn, body){
+  const res = await fetch(SB_URL + "/rest/v1/rpc/" + fn, {
+    method: "POST", headers: { "apikey": SB_KEY, "Content-Type": "application/json" }, body: JSON.stringify(body)
+  });
+  const data = await res.json().catch(() => null);
+  if(!res.ok){ const e = new Error((data && data.message) || ("HTTP " + res.status)); e.server = res.status < 500; throw e; }
+  return data;
+}
+function normCode(s){ return String(s || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6); }
+let classCheckSeq = 0;
+async function checkClass(){
+  const code = normCode($("#clsCode").value), info = $("#clsInfo"), seq = ++classCheckSeq;
+  if(!code){ info.textContent = ""; return; }
+  if(code.length < 6){ info.textContent = "6자리를 입력하세요"; info.style.color = "var(--sub)"; return; }
+  info.textContent = "확인 중…"; info.style.color = "var(--sub)";
+  try{
+    const name = await rpc("vocab_class_name", { p_code: code });
+    if(seq !== classCheckSeq) return;
+    if(name){ info.textContent = "✓ " + name; info.style.color = "var(--ok)"; }
+    else { info.textContent = "없는 반 코드예요"; info.style.color = "var(--bad)"; }
+  }catch(e){ if(seq === classCheckSeq){ info.textContent = "인터넷 연결을 확인하세요"; info.style.color = "var(--warn)"; } }
+}
+$("#clsCode").addEventListener("input", () => {
+  $("#clsCode").value = normCode($("#clsCode").value);
+  settings.classCode = $("#clsCode").value; save(SETTINGS_KEY, settings);
+  checkClass();
+});
+function payloadOf(t){
+  return {
+    client_id: t.clientId, student_name: (t.name || "").slice(0, 20), scope: (t.scope || "").slice(0, 200),
+    mode: t.mode, minutes: t.minutes || 0, correct: t.qs.filter(isRight).length, total: t.qs.length,
+    duration_ms: Math.max(0, Math.min(86400000, t.endedAt - t.start)), time_up: !!t.timeUp,
+    taken_at: new Date(t.endedAt).toISOString(),
+    items: t.qs.map(q => ({ en: q.word.en, ko: q.word.ko, type: q.type, answer: q.answer, correct: isRight(q), override: !!q.override }))
+  };
+}
+function outbox(){ return load(OUTBOX_KEY) || []; }
+function setOutbox(list){ save(OUTBOX_KEY, list); }
+const sentKey = id => "vocabTest.sent." + id;
+function isSent(t){ try{ return !!localStorage.getItem(sentKey(t.clientId)); }catch(e){ return false; } }
+function showTeacherStatus(t, state){
+  const el = $("#teacherStatus");
+  if(!t.classCode || !t.clientId){
+    el.className = "status";
+    el.textContent = "반 코드 없이 본 시험이라 선생님께 자동 전송은 안 돼요. 필요하면 '결과 보내기'로 직접 보내세요.";
+    return;
+  }
+  state = state || (isSent(t) ? "sent" : outbox().some(x => x.payload.client_id === t.clientId) ? "queued" : "");
+  const map = {
+    sending: ["status", "선생님께 보내는 중…"],
+    sent: ["status ok", "✓ 선생님께 자동 전송됐어요 (반 " + t.classCode + ")"],
+    queued: ["status", "인터넷이 안 돼서 대기 중이에요. 연결되면 자동으로 보내요."],
+    rejected: ["status err", "반 코드가 맞지 않아 보내지 못했어요. '결과 보내기'로 직접 보내주세요."]
+  };
+  const [cls, msg] = map[state] || ["status", ""];
+  el.className = cls; el.textContent = msg;
+}
+async function sendToTeacher(t){
+  if(!t.classCode || !t.clientId || !t.name){ showTeacherStatus(t); return; }
+  const item = { code: t.classCode, payload: payloadOf(t) };
+  setOutbox(outbox().filter(x => x.payload.client_id !== t.clientId).concat([item]));
+  showTeacherStatus(t, "sending");
+  const r = await flushOutbox();
+  if(test === t) showTeacherStatus(t, r[t.clientId] || "queued");
+}
+let flushing = null;
+function flushOutbox(){
+  if(flushing) return flushing.then(() => flushOutbox());
+  flushing = (async () => {
+    const results = {}; let list = outbox();
+    for(const it of list.slice()){
+      const id = it.payload.client_id;
+      try{
+        await rpc("vocab_submit", { p_code: it.code, p: it.payload });
+        results[id] = "sent";
+        try{ localStorage.setItem(sentKey(id), "1"); }catch(e){}
+        list = list.filter(x => x !== it);
+      }catch(e){
+        if(e.server){ results[id] = "rejected"; list = list.filter(x => x !== it); } // 서버가 거부: 다시 안 보냄
+        else results[id] = "queued";                                                   // 네트워크·서버 장애: 나중에 다시
+      }
+    }
+    setOutbox(list);
+    return results;
+  })().finally(() => { flushing = null; });
+  return flushing;
+}
+window.addEventListener("online", () => flushOutbox());
+setTimeout(() => { if(outbox().length) flushOutbox(); }, 1500);
+
+/* 링크로 반 코드 받기: ?c=ABC123 */
+(function(){
+  try{
+    const c = normCode(new URLSearchParams(location.search).get("c"));
+    if(c.length === 6){ settings.classCode = c; save(SETTINGS_KEY, settings); history.replaceState(null, "", location.pathname); }
+  }catch(e){}
+})();
 
 /* ---------- 풀다 만 시험 저장 (앱을 닫아도 이어 풀기) ---------- */
 const PROG_KEY = "vocabTest.progress.v1";

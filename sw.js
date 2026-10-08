@@ -1,6 +1,6 @@
 /* 오프라인 지원: 앱 파일은 미리 저장, 페이지는 네트워크 우선(업데이트 바로 반영) */
-const CACHE = "vocab-test-v3";
-const CORE = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png", "./apple-touch-icon.png", "./favicon.png"];
+const CACHE = "vocab-test-v4";
+const CORE = ["./", "./index.html", "./teacher.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png", "./apple-touch-icon.png", "./favicon.png"];
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(CORE)).then(() => self.skipWaiting()));
 });
