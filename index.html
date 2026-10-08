@@ -1,0 +1,542 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>단어 테스트</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<style>
+:root{
+  --bg:#f6f7f9; --card:#fff; --ink:#15181d; --sub:#5d6573; --line:#e3e6eb;
+  --brand:#2f5bea; --brand-soft:#e8eefe; --ok:#1c8a4c; --ok-soft:#e5f5ec;
+  --bad:#d23a3a; --bad-soft:#fdeaea; --warn:#c77700;
+}
+@media (prefers-color-scheme: dark){
+  :root{--bg:#111418; --card:#1a1e24; --ink:#eef0f3; --sub:#9aa3b2; --line:#2b313a;
+    --brand:#6d8dff; --brand-soft:#232c45; --ok:#4cc985; --ok-soft:#18301f;
+    --bad:#ff6b6b; --bad-soft:#3a1d1d; --warn:#ffb340;}
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:Pretendard,-apple-system,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;
+  -webkit-text-size-adjust:100%}
+.wrap{max-width:720px;margin:0 auto;padding:16px 16px 48px}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:4px 0 16px}
+h1{font-size:20px;margin:0;letter-spacing:-.02em}
+.tabs{display:flex;gap:4px;background:var(--line);padding:3px;border-radius:10px}
+.tabs button{border:0;background:transparent;color:var(--sub);padding:7px 12px;border-radius:8px;font:inherit;font-size:14px;cursor:pointer}
+.tabs button.on{background:var(--card);color:var(--ink);font-weight:600}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:14px}
+.card h2{font-size:16px;margin:0 0 4px}
+.hint{color:var(--sub);font-size:13px;line-height:1.5;margin:0 0 12px}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.btn{border:1px solid var(--line);background:var(--card);color:var(--ink);padding:9px 14px;border-radius:10px;font:inherit;font-size:14px;cursor:pointer}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.primary{background:var(--brand);border-color:var(--brand);color:#fff;font-weight:600}
+.btn.big{width:100%;padding:14px;font-size:16px}
+.btn.small{padding:5px 10px;font-size:13px}
+.chips{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:8px}
+.chip{position:relative}
+.chip input{position:absolute;opacity:0;pointer-events:none}
+.chip span{display:block;text-align:center;padding:10px 6px;border:1px solid var(--line);border-radius:10px;font-size:14px;cursor:pointer;user-select:none}
+.chip span small{display:block;color:var(--sub);font-size:11px;margin-top:2px}
+.chip input:checked + span{background:var(--brand-soft);border-color:var(--brand);color:var(--brand);font-weight:600}
+.chip input:focus-visible + span{outline:2px solid var(--brand);outline-offset:2px}
+label.field{display:block;font-size:14px;font-weight:600;margin:14px 0 6px}
+input[type=number],input[type=text],textarea,select{width:100%;border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:10px;padding:10px 12px;font:inherit;font-size:16px}
+textarea{min-height:240px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;line-height:1.5}
+.seg{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.seg label{flex:1;text-align:center}
+.seg input{display:none}
+.seg span{display:block;padding:10px 4px;font-size:14px;cursor:pointer}
+.seg input:checked + span{background:var(--brand);color:#fff;font-weight:600}
+.seg label + label span{border-left:1px solid var(--line)}
+.inline{display:flex;gap:8px;align-items:center}
+.inline input{max-width:120px}
+.status{font-size:13px;color:var(--sub);margin-top:10px;white-space:pre-line}
+.status.err{color:var(--bad)}
+.status.ok{color:var(--ok)}
+.empty{text-align:center;color:var(--sub);padding:28px 8px;line-height:1.6}
+/* test */
+.topbar{position:sticky;top:0;z-index:5;background:var(--bg);padding:8px 0 10px;display:flex;justify-content:space-between;align-items:center;gap:10px}
+.timer{font-variant-numeric:tabular-nums;font-weight:700;font-size:18px}
+.timer.warn{color:var(--bad)}
+.progress{height:6px;background:var(--line);border-radius:6px;overflow:hidden;flex:1}
+.progress i{display:block;height:100%;background:var(--brand);width:0;transition:width .2s}
+.qtype{display:inline-block;font-size:12px;font-weight:700;padding:4px 9px;border-radius:999px;background:var(--brand-soft);color:var(--brand)}
+.qtype.spell{background:var(--ok-soft);color:var(--ok)}
+.prompt{font-size:30px;font-weight:700;letter-spacing:-.02em;margin:18px 0 8px;word-break:keep-all;line-height:1.3}
+.qnum{color:var(--sub);font-size:13px}
+.answer{font-size:20px;padding:14px}
+.nav{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.nav button{width:34px;height:34px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--sub);font:inherit;font-size:12px;cursor:pointer}
+.nav button.done{background:var(--brand-soft);color:var(--brand);border-color:transparent}
+.nav button.cur{outline:2px solid var(--brand);color:var(--ink)}
+/* result */
+.score{font-size:44px;font-weight:800;letter-spacing:-.03em;margin:4px 0}
+.res{width:100%;border-collapse:collapse;font-size:14px}
+.res td{border-top:1px solid var(--line);padding:10px 6px;vertical-align:top}
+.res .mark{width:28px;font-weight:800;text-align:center}
+.res tr.ok .mark{color:var(--ok)}
+.res tr.bad .mark{color:var(--bad)}
+.res .yours{color:var(--sub)}
+.res tr.bad .yours{color:var(--bad);text-decoration:line-through}
+.res tr.bad .yours.blank{text-decoration:none}
+.tag{font-size:11px;color:var(--sub)}
+.hidden{display:none !important}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>단어 테스트</h1>
+    <nav class="tabs" id="tabs">
+      <button data-view="setup" class="on">시험</button>
+      <button data-view="data">단어 데이터</button>
+    </nav>
+  </header>
+
+  <!-- ===== 시험 설정 ===== -->
+  <section id="view-setup">
+    <div id="noData" class="card empty hidden">
+      아직 단어가 없어요.<br>
+      <b>단어 데이터</b> 탭에서 단어를 넣거나 기본 단어장으로 되돌려 주세요.
+      <div style="margin-top:14px"><button class="btn primary" data-goto="data">단어 불러오기</button></div>
+    </div>
+
+    <div id="setupForm" class="hidden">
+      <div class="card">
+        <div class="row" style="justify-content:space-between">
+          <h2>시험 범위</h2>
+          <div class="row">
+            <button class="btn small" id="selAll">전체 선택</button>
+            <button class="btn small" id="selNone">해제</button>
+          </div>
+        </div>
+        <p class="hint">시험 볼 DAY를 누르세요. 여러 개 골라도 돼요.</p>
+        <div class="inline" style="margin-bottom:12px;flex-wrap:wrap">
+          <span style="font-size:14px">범위로 고르기</span>
+          <input type="number" id="rFrom" min="1" value="1" inputmode="numeric" style="max-width:72px">
+          <span>~</span>
+          <input type="number" id="rTo" min="1" value="1" inputmode="numeric" style="max-width:72px">
+          <button class="btn small" id="rApply">선택</button>
+        </div>
+        <div class="chips" id="unitChips"></div>
+        <div class="status" id="poolInfo"></div>
+      </div>
+
+      <div class="card">
+        <h2>문제 설정</h2>
+        <label class="field" for="qCount">문제 수</label>
+        <div class="inline">
+          <input type="number" id="qCount" min="1" value="20" inputmode="numeric">
+          <button class="btn small" id="qAll">전부</button>
+          <span class="hint" style="margin:0" id="qMax"></span>
+        </div>
+
+        <label class="field" for="tLimit">제한 시간 (분, 0 = 제한 없음)</label>
+        <div class="inline">
+          <input type="number" id="tLimit" min="0" step="1" value="10" inputmode="numeric">
+          <button class="btn small" data-t="5">5분</button>
+          <button class="btn small" data-t="10">10분</button>
+          <button class="btn small" data-t="0">없음</button>
+        </div>
+
+        <label class="field">문제 유형</label>
+        <div class="seg">
+          <label><input type="radio" name="mode" value="mix" checked><span>섞기</span></label>
+          <label><input type="radio" name="mode" value="meaning"><span>뜻 쓰기만</span></label>
+          <label><input type="radio" name="mode" value="spell"><span>철자 쓰기만</span></label>
+        </div>
+        <p class="hint" style="margin-top:8px">뜻 쓰기 = 영어를 보고 한국어 뜻 입력 · 철자 쓰기 = 뜻을 보고 영어 철자 입력. 섞기는 반반이에요.</p>
+      </div>
+
+      <button class="btn primary big" id="startBtn">시험 시작</button>
+    </div>
+  </section>
+
+  <!-- ===== 단어 데이터 ===== -->
+  <section id="view-data" class="hidden">
+    <div class="card">
+      <h2>단어장</h2>
+      <p class="hint" id="dataSource"></p>
+      <p class="hint">
+        단어를 고치거나 추가하려면 아래를 수정하고 <b>저장</b>을 누르세요.<br>
+        형식: <code># 범위 이름</code> 줄 다음에 <code>영어 | 뜻</code> 한 줄에 하나.
+      </p>
+      <textarea id="dataText" spellcheck="false"></textarea>
+      <div class="row" style="margin-top:10px">
+        <button class="btn primary" id="saveData">저장</button>
+        <button class="btn" id="resetData">기본 단어장으로 되돌리기</button>
+      </div>
+      <div class="status" id="dataStatus"></div>
+    </div>
+  </section>
+
+  <!-- ===== 시험 ===== -->
+  <section id="view-test" class="hidden">
+    <div class="topbar">
+      <span class="timer" id="timer">--:--</span>
+      <div class="progress"><i id="progBar"></i></div>
+      <span class="qnum" id="progText"></span>
+    </div>
+    <div class="card">
+      <span class="qtype" id="qType"></span>
+      <div class="prompt" id="qPrompt"></div>
+      <p class="hint" id="qHint" style="margin-bottom:10px"></p>
+      <input type="text" class="answer" id="qAnswer" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="next">
+      <div class="row" style="margin-top:12px;justify-content:space-between">
+        <button class="btn" id="prevBtn">← 이전</button>
+        <button class="btn primary" id="nextBtn">다음 →</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="row" style="justify-content:space-between;margin-bottom:8px">
+        <span class="hint" style="margin:0">문제 번호를 눌러 이동</span>
+        <button class="btn small" id="submitBtn">제출</button>
+      </div>
+      <div class="nav" id="qNav"></div>
+    </div>
+  </section>
+
+  <!-- ===== 결과 ===== -->
+  <section id="view-result" class="hidden">
+    <div class="card">
+      <div class="hint" style="margin:0" id="resMeta"></div>
+      <div class="score" id="resScore"></div>
+      <p class="hint" id="resNote">뜻 채점은 자동이라 완벽하지 않아요. 맞게 썼는데 틀렸다고 나오면 <b>정답 인정</b>을 누르세요.</p>
+      <div class="row">
+        <button class="btn primary" id="retryWrong">틀린 것만 다시</button>
+        <button class="btn" id="newTest">새 시험</button>
+        <label class="row" style="gap:6px;font-size:14px;margin-left:auto"><input type="checkbox" id="onlyWrong"> 틀린 것만 보기</label>
+      </div>
+    </div>
+    <div class="card" style="padding:6px 12px">
+      <table class="res"><tbody id="resBody"></tbody></table>
+    </div>
+  </section>
+</div>
+
+<script>
+"use strict";
+/* ---------- 저장소 (실패해도 동작) ---------- */
+const STORE_KEY = "vocabTest.units.v1";
+const SETTINGS_KEY = "vocabTest.settings.v1";
+function load(k){ try{ const v = localStorage.getItem(k); return v ? JSON.parse(v) : null; }catch(e){ return null; } }
+function save(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
+
+/* units: [{label:"DAY 01", words:[{en,ko}]}] — 출처: classcard 폴더 362380 (netutor 선생님 세트) */
+const BOOK = "주니어 능률 VOCA STARTER 2";
+const BUILTIN = [{"label":"DAY 01","words":[{"en":"think","ko":"생각하다"},{"en":"live","ko":"살다"},{"en":"space","ko":"공간; 우주"},{"en":"grade","ko":"성적; 학년"},{"en":"calm","ko":"침착한, 차분한; 진정시키다"},{"en":"lesson","ko":"수업; 교훈"},{"en":"hard","ko":"단단한, 딱딱한; 어려운"},{"en":"floor","ko":"(실내의) 바닥; (건물의) 층"},{"en":"quickly","ko":"빨리, 빠르게"},{"en":"decide","ko":"결정[결심]하다"},{"en":"person","ko":"사람, 개인"},{"en":"across","ko":"~을 가로질러; ~ 맞은편에, ~ 건너편에"}]},{"label":"DAY 02","words":[{"en":"use","ko":"쓰다, 사용하다; 사용, 이용"},{"en":"lazy","ko":"게으른"},{"en":"free","ko":"자유로운; 무료의"},{"en":"habit","ko":"습관, 버릇"},{"en":"turn","ko":"돌다, 돌리다; 순서, 차례"},{"en":"calendar","ko":"달력"},{"en":"often","ko":"자주, 종종"},{"en":"bright","ko":"밝은, 빛나는"},{"en":"take","ko":"잡다, 받다; 가져가다, 데려가다"},{"en":"perfect","ko":"완벽한; 가장 알맞은, 딱 맞는"},{"en":"museum","ko":"박물관, 미술관"},{"en":"country","ko":"국가, 나라; 시골"}]},{"label":"DAY 03","words":[{"en":"fun","ko":"재미, 즐거움; 재미있는, 즐거운"},{"en":"idea","ko":"생각, 아이디어; 지식, 이해"},{"en":"show","ko":"보여주다; 공연, 쇼"},{"en":"bored","ko":"지루해하는"},{"en":"thank","ko":"감사하다, 고마워하다"},{"en":"sand","ko":"모래"},{"en":"curious","ko":"궁금한, 호기심이 많은"},{"en":"bookstore","ko":"서점, 책방"},{"en":"fashion","ko":"유행; 패션, 의류업"},{"en":"catch","ko":"(붙)잡다"},{"en":"easily","ko":"쉽게, 용이하게"},{"en":"front","ko":"앞면, 앞쪽; 앞쪽의"}]},{"label":"DAY 04","words":[{"en":"win","ko":"이기다; 획득하다, 따다"},{"en":"ocean","ko":"바다; 대양"},{"en":"honest","ko":"정직한; 솔직한"},{"en":"climb","ko":"오르다, 등반하다"},{"en":"neighbor","ko":"이웃"},{"en":"god","ko":"신; 하느님"},{"en":"because","ko":"~ 때문에, 왜냐하면"},{"en":"break","ko":"깨다, 부서지다; 고장 나다"},{"en":"match","ko":"경기, 시합; 성냥"},{"en":"expensive","ko":"비싼, 돈이 많이 드는"},{"en":"camp","ko":"야영지, 캠프; 야영[캠핑]하다"},{"en":"popular","ko":"인기 있는"}]},{"label":"DAY 05","words":[{"en":"wear","ko":"입고[신고, 쓰고, 끼고] 있다"},{"en":"bill","ko":"고지서, 청구서, 계산서; 지폐"},{"en":"cry","ko":"울다; 외치다"},{"en":"island","ko":"섬"},{"en":"address","ko":"주소"},{"en":"hundred","ko":"100, 백"},{"en":"funny","ko":"우스운, 재미있는"},{"en":"fat","ko":"뚱뚱한, 살찐; 지방"},{"en":"sell","ko":"팔다; 팔리다"},{"en":"around","ko":"~ 주위에, ~을 둘러싸고"},{"en":"plan","ko":"계획; 계획하다"},{"en":"engineer","ko":"기사, 기술자, 엔지니어"}]},{"label":"DAY 06","words":[{"en":"sit","ko":"앉다"},{"en":"cash","ko":"현금, 현찰"},{"en":"lovely","ko":"사랑스러운, 귀여운"},{"en":"create","ko":"창조하다, 만들다"},{"en":"scary","ko":"무서운, 겁나는"},{"en":"theater","ko":"극장"},{"en":"borrow","ko":"빌리다"},{"en":"mistake","ko":"실수, 잘못"},{"en":"forest","ko":"숲, 삼림"},{"en":"without","ko":"~ 없이"},{"en":"memory","ko":"기억(력); 추억"},{"en":"bug","ko":"벌레, 곤충"}]},{"label":"DAY 07","words":[{"en":"hear","ko":"(들리는 소리를) 듣다, 들리다"},{"en":"cage","ko":"우리, 새장"},{"en":"past","ko":"과거의, 지나간; (바로) 지난; 과거"},{"en":"brush","ko":"붓, 솔, 빗; 솔[빗]질하다, 닦다"},{"en":"try","ko":"노력하다; 시도하다"},{"en":"next","ko":"다음의; 다음에, 다음으로"},{"en":"beach","ko":"해변, 바닷가"},{"en":"tail","ko":"꼬리"},{"en":"early","ko":"일찍, 빨리; 이른, 빠른"},{"en":"example","ko":"예(시), 사례, 보기"},{"en":"fall","ko":"떨어지다; 넘어지다; 가을"},{"en":"problem","ko":"문제"}]},{"label":"DAY 08","words":[{"en":"life","ko":"생명, 목숨; 인생, 삶"},{"en":"build","ko":"(건물을) 짓다, 건설하다"},{"en":"ride","ko":"(말·탈것 등을) 타다; 타기"},{"en":"weak","ko":"약한, 힘이 없는"},{"en":"laugh","ko":"(소리 내어) 웃다; 웃음(소리)"},{"en":"office","ko":"사무실, 회사"},{"en":"stick","ko":"나뭇가지; 채, 스틱; 붙다, 붙이다"},{"en":"serious","ko":"심각한; 진지한"},{"en":"loud","ko":"큰, 시끄러운"},{"en":"pumpkin","ko":"호박"},{"en":"pool","ko":"수영장; 웅덩이"},{"en":"until","ko":"~까지; ~할 때까지"}]},{"label":"DAY 09","words":[{"en":"keep","ko":"(상태를) 유지하다; 계속하다"},{"en":"thing","ko":"물건, 것"},{"en":"church","ko":"교회"},{"en":"join","ko":"가입하다; 연결하다"},{"en":"mad","ko":"화가 난; 미친, 제정신이 아닌"},{"en":"weight","ko":"무게, 체중"},{"en":"die","ko":"죽다, 사망하다"},{"en":"sure","ko":"확신하는, 확실한"},{"en":"festival","ko":"축제"},{"en":"first","ko":"첫 (번)째의; 일등의; 우선, 먼저"},{"en":"heart","ko":"심장; 마음, 감정"},{"en":"strange","ko":"이상한; 낯선"}]},{"label":"DAY 10","words":[{"en":"race","ko":"경주"},{"en":"garbage","ko":"쓰레기"},{"en":"let","ko":"~하게 하다, ~하도록 허락하다"},{"en":"nail","ko":"손톱, 발톱"},{"en":"above","ko":"~보다 위에; 위에, 위로"},{"en":"robot","ko":"로봇"},{"en":"station","ko":"역, 정거장[정류장]"},{"en":"lonely","ko":"외로운, 쓸쓸한"},{"en":"pick","ko":"고르다; (과일·꽃 등을) 따다, 꺾다"},{"en":"palace","ko":"궁전"},{"en":"ghost","ko":"유령, 귀신"},{"en":"fantastic","ko":"환상적인, 멋진"}]},{"label":"DAY 11","words":[{"en":"speak","ko":"말하다, 이야기하다"},{"en":"top","ko":"맨 위, 꼭대기; 맨 위의"},{"en":"beef","ko":"소고기"},{"en":"worry","ko":"걱정하다; 걱정, 고민거리"},{"en":"hero","ko":"영웅; (책·영화 등의) 주인공"},{"en":"careful","ko":"조심하는, 주의 깊은"},{"en":"wood","ko":"나무, 목재"},{"en":"score","ko":"점수, 득점; 득점하다"},{"en":"rest","ko":"휴식; 동사 쉬다, 휴식하다"},{"en":"follow","ko":"~를 따라가다[오다]; [시간·순서] 뒤를 잇다"},{"en":"copy","ko":"복사(본), 복제(본); 복사하다, 베끼다"},{"en":"fence","ko":"울타리, 담"}]},{"label":"DAY 12","words":[{"en":"home","ko":"집, 가정; 집에, 집으로"},{"en":"fan","ko":"(스포츠·연예인 등의) 팬; 선풍기"},{"en":"difficult","ko":"어려운, 힘든"},{"en":"salt","ko":"소금"},{"en":"push","ko":"밀다; 누르다"},{"en":"upset","ko":"속상한, 화난; 속상하게 하다"},{"en":"safe","ko":"안전한"},{"en":"fix","ko":"고치다; 고정시키다"},{"en":"contest","ko":"대회, 시합, 콘테스트"},{"en":"hate","ko":"(몹시) 싫어하다, 미워하다"},{"en":"badminton","ko":"배드민턴"},{"en":"almost","ko":"거의"}]},{"label":"DAY 13","words":[{"en":"wife","ko":"아내, 부인"},{"en":"fact","ko":"사실"},{"en":"talk","ko":"말하다, 이야기하다"},{"en":"artist","ko":"화가, 예술가"},{"en":"hang","ko":"걸(리)다, 매달(리)다"},{"en":"background","ko":"배경"},{"en":"cover","ko":"덮다, 가리다"},{"en":"jeans","ko":"청바지"},{"en":"special","ko":"특별한"},{"en":"health","ko":"건강"},{"en":"bottle","ko":"병; 한 병(의 양)"},{"en":"role","ko":"역할, 임무; (배우의) 배역"}]},{"label":"DAY 14","words":[{"en":"bring","ko":"가져오다, 데려오다"},{"en":"curly","ko":"곱슬곱슬한"},{"en":"stair","ko":"계단"},{"en":"couple","ko":"커플, 부부; 두 사람, 두 개"},{"en":"guess","ko":"추측하다, 짐작하다; 추측, 짐작"},{"en":"backpack","ko":"배낭"},{"en":"ready","ko":"준비가 된"},{"en":"desert","ko":"사막"},{"en":"rule","ko":"규칙, 규정"},{"en":"by","ko":"~ 옆에; ~에 의해, ~으로"},{"en":"crowd","ko":"군중, 인파"},{"en":"grape","ko":"포도"}]},{"label":"DAY 15","words":[{"en":"return","ko":"돌아오다[가다]; 돌려주다, 반납하다"},{"en":"coin","ko":"동전"},{"en":"must","ko":"~해야 한다; ~임에 틀림없다"},{"en":"business","ko":"사업, 거래; (직장의) 일, 업무"},{"en":"nervous","ko":"긴장한, 초조한"},{"en":"battery","ko":"건전지, 배터리"},{"en":"rice","ko":"밥, 쌀"},{"en":"death","ko":"죽음, 사망"},{"en":"cross","ko":"건너다, 가로지르다"},{"en":"human","ko":"인간, 사람; 인간[사람]의"},{"en":"colorful","ko":"알록달록한, 다채로운"},{"en":"shower","ko":"샤워; 소나기"}]},{"label":"DAY 16","words":[{"en":"may","ko":"~일지도 모른다; ~해도 된다"},{"en":"base","ko":"(사물의) 맨 아랫부분, 밑바닥; 기초, 토대"},{"en":"enjoy","ko":"즐기다, 즐거워하다"},{"en":"village","ko":"(시골) 마을"},{"en":"traditional","ko":"전통의, 전통적인"},{"en":"writer","ko":"작가, 쓴 사람"},{"en":"against","ko":"~에 맞서, ~을 상대하여; ~에 반대하여"},{"en":"mind","ko":"마음, 정신; 꺼리다, 싫어하다"},{"en":"sentence","ko":"문장"},{"en":"strong","ko":"힘센, 강한"},{"en":"away","ko":"[시간·장소] 떨어져, 멀리"},{"en":"information","ko":"정보, 자료"}]},{"label":"DAY 17","words":[{"en":"heat","ko":"열기, 열; 가열하다, 데우다"},{"en":"prize","ko":"상, 상품"},{"en":"travel","ko":"(먼 곳으로) 여행하다; 여행"},{"en":"center","ko":"중심, 중앙"},{"en":"boss","ko":"(직장의) 상사"},{"en":"newspaper","ko":"신문"},{"en":"need","ko":"필요하다; ~해야 하다"},{"en":"last","ko":"마지막의; 지난, 최근의"},{"en":"wonderful","ko":"아주 멋진, 훌륭한"},{"en":"nothing","ko":"아무것도 ~ 아니다[없다]"},{"en":"stadium","ko":"경기장, 스타디움"},{"en":"file","ko":"파일, 서류철; (컴퓨터의) 파일"}]},{"label":"DAY 18","words":[{"en":"tell","ko":"말하다, 이야기하다"},{"en":"form","ko":"종류, 유형; 형성하다, 형성되다"},{"en":"large","ko":"(규모가) 큰, 넓은; (양이) 많은"},{"en":"ticket","ko":"표, 입장권"},{"en":"forget","ko":"잊다, 잊어버리다"},{"en":"shake","ko":"흔들다, 흔들리다; 떨다, 떨리다"},{"en":"sweet","ko":"달콤한, 단"},{"en":"fry","ko":"(기름에) 튀기다, 볶다"},{"en":"bomb","ko":"폭탄"},{"en":"along","ko":"~을 따라서; 앞으로"},{"en":"reporter","ko":"(보도) 기자, 리포터"},{"en":"however","ko":"그러나, 하지만"}]},{"label":"DAY 19","words":[{"en":"club","ko":"동아리, 클럽"},{"en":"blood","ko":"피, 혈액"},{"en":"real","ko":"실제의, 현실의; 진짜의, 진품의"},{"en":"same","ko":"(똑)같은"},{"en":"subway","ko":"지하철"},{"en":"mathematics","ko":"수학"},{"en":"fill","ko":"채우다"},{"en":"oil","ko":"(연료) 기름; (먹는) 기름"},{"en":"lady","ko":"여자분, 여성, 숙녀"},{"en":"hurry","ko":"서두르다"},{"en":"control","ko":"지배하다, 통제하다; 지배(권), 통제(력)"},{"en":"vegetable","ko":"채소, 야채"}]},{"label":"DAY 20","words":[{"en":"carry","ko":"나르다, 운반하다; 가지고 다니다"},{"en":"bottom","ko":"맨 아래, 바닥; 맨 아래의"},{"en":"danger","ko":"위험"},{"en":"giant","ko":"거대한; 거인"},{"en":"enough","ko":"충분한; 충분히"},{"en":"gentleman","ko":"남자분, 신사"},{"en":"spicy","ko":"매운, 매콤한"},{"en":"nature","ko":"자연"},{"en":"order","ko":"순서; 명령하다; (음식을) 주문하다"},{"en":"wall","ko":"벽; 담"},{"en":"terrible","ko":"끔찍한; 형편없는"},{"en":"congratulate","ko":"축하하다"}]},{"label":"DAY 21","words":[{"en":"twice","ko":"두 번, 2회; 두 배로"},{"en":"fever","ko":"(병으로 인한) 열"},{"en":"empty","ko":"비어 있는, 빈"},{"en":"lose","ko":"잃어버리다; 지다"},{"en":"speed","ko":"속도, 속력"},{"en":"salty","ko":"짠, 짭짤한"},{"en":"noodle","ko":"국수"},{"en":"main","ko":"주된, 주요한"},{"en":"design","ko":"디자인; 디자인하다, 설계하다"},{"en":"accent","ko":"억양, 말투; 강세, 악센트"},{"en":"fresh","ko":"신선한"},{"en":"elementary","ko":"초보의, 초급의; 기본적인"}]},{"label":"DAY 22","words":[{"en":"east","ko":"동쪽; 동쪽의"},{"en":"invite","ko":"초대하다"},{"en":"kid","ko":"아이, 어린이"},{"en":"future","ko":"미래, 장래; 미래의, 장래의"},{"en":"below","ko":"~보다 아래에; 아래에, 아래로"},{"en":"thousand","ko":"1000, 천"},{"en":"type","ko":"종류, 유형"},{"en":"face","ko":"얼굴"},{"en":"gesture","ko":"몸짓, 제스처"},{"en":"mix","ko":"섞다, 섞이다"},{"en":"brake","ko":"브레이크, 제동 장치"},{"en":"excited","ko":"신이 난, 들뜬"}]},{"label":"DAY 23","words":[{"en":"gate","ko":"출입문, 문; (공항의) 탑승구"},{"en":"cycle","ko":"순환, 주기"},{"en":"brand","ko":"상표, 브랜드"},{"en":"field","ko":"들판, 밭"},{"en":"shout","ko":"소리치다, 외치다"},{"en":"north","ko":"북쪽; 북쪽의"},{"en":"middle","ko":"가운데, 중앙; 가운데의, 중앙의"},{"en":"medicine","ko":"약; 의학"},{"en":"present","ko":"현재의; 참석[출석]한"},{"en":"throw","ko":"던지다"},{"en":"far","ko":"멀리; 먼"},{"en":"bakery","ko":"빵집, 제과점"}]},{"label":"DAY 24","words":[{"en":"west","ko":"서쪽; 서쪽의"},{"en":"become","ko":"~이 되다, ~해지다"},{"en":"wild","ko":"야생의, 자연 그대로의"},{"en":"if","ko":"(만약) ~라면"},{"en":"protect","ko":"보호하다, 지키다"},{"en":"castle","ko":"성"},{"en":"bat","ko":"방망이, 배트"},{"en":"reason","ko":"이유, 까닭"},{"en":"leaf","ko":"잎, 나뭇잎"},{"en":"amazing","ko":"놀라운, 굉장한"},{"en":"power","ko":"힘, 능력"},{"en":"grandparents","ko":"조부모(할아버지와 할머니)"}]},{"label":"DAY 25","words":[{"en":"spend","ko":"(돈을) 쓰다; (시간을) 보내다"},{"en":"bite","ko":"물다; 한 입(의 양)"},{"en":"pear","ko":"배"},{"en":"chance","ko":"가능성; 기회"},{"en":"taste","ko":"맛; 맛이 나다"},{"en":"end","ko":"끝, 마지막; 끝나다, 끝내다"},{"en":"straight","ko":"똑바로, 곧장; 곧은, 일직선의"},{"en":"adult","ko":"성인, 어른"},{"en":"world","ko":"세계"},{"en":"different","ko":"다른, 차이가 나는; 여러 가지의"},{"en":"actor","ko":"배우"},{"en":"headache","ko":"두통"}]},{"label":"DAY 26","words":[{"en":"roof","ko":"지붕"},{"en":"add","ko":"추가하다; (수를) 더하다, 합하다"},{"en":"exit","ko":"출구"},{"en":"during","ko":"[특정 기간] ~ 동안 (내내)"},{"en":"only","ko":"오직, 단지; 유일한"},{"en":"huge","ko":"거대한, 막대한"},{"en":"burn","ko":"(불에) 타다, 태우다"},{"en":"weather","ko":"날씨"},{"en":"toothache","ko":"치통"},{"en":"cost","ko":"비용, 값; (비용·값이) 들다"},{"en":"accident","ko":"사고; 우연(한 사건)"},{"en":"teenager","ko":"십 대"}]},{"label":"DAY 27","words":[{"en":"drop","ko":"떨어지다, 떨어뜨리다"},{"en":"guide","ko":"안내인, 가이드; 안내하다"},{"en":"bone","ko":"뼈"},{"en":"vacation","ko":"휴가, 방학"},{"en":"collect","ko":"모으다, 수집하다"},{"en":"clever","ko":"영리한, 똑똑한"},{"en":"side","ko":"쪽, 측; 옆면, 측면"},{"en":"agree","ko":"동의하다"},{"en":"rich","ko":"부유한, 돈 많은"},{"en":"cotton","ko":"면, 면직물; 목화"},{"en":"astronaut","ko":"우주비행사"},{"en":"painting","ko":"그림"}]},{"label":"DAY 28","words":[{"en":"hunt","ko":"사냥하다; 사냥"},{"en":"pond","ko":"연못"},{"en":"dentist","ko":"치과 의사"},{"en":"error","ko":"실수, 오류; 에러"},{"en":"pay","ko":"(돈을) 내다, 지불하다"},{"en":"stomachache","ko":"복통, 배탈"},{"en":"customer","ko":"손님, 고객"},{"en":"luck","ko":"행운, 운"},{"en":"other","ko":"다른, 그 밖의; (둘 중) 다른 하나의"},{"en":"bowl","ko":"(움푹한) 그릇, 사발; 한 그릇(의 양)"},{"en":"then","ko":"(과거·미래의) 그때; 그 다음에"},{"en":"dangerous","ko":"위험한"}]},{"label":"DAY 29","words":[{"en":"lie","ko":"눕다; 놓여 있다; 거짓말하다"},{"en":"minute","ko":"[시간의 단위] 분; 잠깐, 순간"},{"en":"wake","ko":"깨(우)다, 일어나다"},{"en":"purple","ko":"자주색의; 자주색"},{"en":"gym","ko":"체육관"},{"en":"case","ko":"(특정한 상황의) 경우; 용기, 통, 상자"},{"en":"wish","ko":"원하다, 바라다; 소원, 소망"},{"en":"each","ko":"각각의, 각자의; 각각, 각자"},{"en":"company","ko":"회사; 동료, 일행"},{"en":"interest","ko":"관심, 흥미; 흥미를 끌다"},{"en":"alone","ko":"혼자인; 외로운; 혼자"},{"en":"humor","ko":"유머, 익살스러움"}]},{"label":"DAY 30","words":[{"en":"save","ko":"(위험에서) 구하다; (돈을) 모으다, 저축하다"},{"en":"earth","ko":"지구"},{"en":"college","ko":"(단과) 대학"},{"en":"meal","ko":"식사, 끼니"},{"en":"double","ko":"(양이나 수의) 두 배의"},{"en":"active","ko":"활동적인, 활발한"},{"en":"recycle","ko":"재활용하다"},{"en":"tie","ko":"(끈 등으로) 묶다, 매다; 넥타이"},{"en":"brain","ko":"뇌"},{"en":"fog","ko":"안개"},{"en":"parade","ko":"퍼레이드, 행렬"},{"en":"choice","ko":"선택, 고르기; 선택권"}]},{"label":"DAY 31","words":[{"en":"area","ko":"지역; (특정 용도의) 구역"},{"en":"pair","ko":"한 쌍[켤레]"},{"en":"wet","ko":"젖은, 축축한"},{"en":"step","ko":"(발)걸음; 단계"},{"en":"nickname","ko":"별명"},{"en":"welcome","ko":"환영하다, 맞이하다"},{"en":"mask","ko":"마스크; 가면"},{"en":"concert","ko":"연주회, 콘서트"},{"en":"inside","ko":"~의 안에; 안에[으로]"},{"en":"heaven","ko":"천국"},{"en":"secret","ko":"비밀"},{"en":"communicate","ko":"의사소통하다"}]},{"label":"DAY 32","words":[{"en":"cloth","ko":"옷감, 직물; 천"},{"en":"tour","ko":"여행, 관광; 여행하다, 관광하다"},{"en":"lock","ko":"잠기다, 잠그다; 자물쇠"},{"en":"off","ko":"[분리·제거] ~에서 떨어져; [시간·공간] 떨어져서, 멀리"},{"en":"clear","ko":"분명한, 명확한; 맑은, 투명한"},{"en":"history","ko":"역사"},{"en":"share","ko":"함께 쓰다, 공유하다; 나누다"},{"en":"bean","ko":"콩"},{"en":"cartoon","ko":"만화 (영화)"},{"en":"serve","ko":"(음식을) 내다, 제공하다; (손님을) 응대하다"},{"en":"price","ko":"값, 가격"},{"en":"experience","ko":"경험; 경험하다, 겪다"}]},{"label":"DAY 33","words":[{"en":"joy","ko":"기쁨, 즐거움"},{"en":"cave","ko":"동굴"},{"en":"wonder","ko":"궁금하다; 놀라다"},{"en":"pants","ko":"바지"},{"en":"stand","ko":"서다, 서 있다"},{"en":"blank","ko":"빈, 공백의; 빈칸"},{"en":"musician","ko":"음악가, 뮤지션"},{"en":"lucky","ko":"행운의, 운이 좋은"},{"en":"birth","ko":"탄생, 출생"},{"en":"plane","ko":"비행기"},{"en":"creative","ko":"창의적인, 창조적인"},{"en":"focus","ko":"집중하다; 초점, 중점"}]},{"label":"DAY 34","words":[{"en":"piece","ko":"조각, 일부분; 한 덩어리"},{"en":"ahead","ko":"앞(쪽)으로, 앞에"},{"en":"boot","ko":"장화, 부츠"},{"en":"into","ko":"[장소·위치] ~ 안[속]으로; [상태의 변화] ~(으)로"},{"en":"battle","ko":"전투, 전쟁; 싸움, 투쟁"},{"en":"weekly","ko":"매주의, 주 1회의; 매주, 주 1회"},{"en":"factory","ko":"공장"},{"en":"divide","ko":"나누다, 분할하다"},{"en":"fail","ko":"실패하다; (시험에서) 떨어지다"},{"en":"opinion","ko":"의견, 견해"},{"en":"engine","ko":"엔진"},{"en":"national","ko":"국가의, 국가적인"}]},{"label":"DAY 35","words":[{"en":"mouse","ko":"쥐, 생쥐"},{"en":"plant","ko":"식물; (식물을) 심다"},{"en":"peace","ko":"평화"},{"en":"advise","ko":"조언하다, 충고하다"},{"en":"online","ko":"온라인의; 온라인으로"},{"en":"shape","ko":"모양, 형태"},{"en":"care","ko":"신경 쓰다, 관심을 가지다; 돌보다; 주의, 조심; 돌봄, 보살핌"},{"en":"bicycle","ko":"자전거"},{"en":"discuss","ko":"논의하다, 상의하다"},{"en":"afraid","ko":"무서워하는, 두려워하는"},{"en":"language","ko":"언어, 말"},{"en":"than","ko":"~보다"}]},{"label":"DAY 36","words":[{"en":"video","ko":"영상, 비디오"},{"en":"trash","ko":"쓰레기"},{"en":"kill","ko":"죽이다"},{"en":"friendly","ko":"친절한, 상냥한"},{"en":"machine","ko":"기계"},{"en":"please","ko":"부디, 제발; 기쁘게 하다"},{"en":"board","ko":"판자, 널빤지; 게시판"},{"en":"south","ko":"남쪽; 남쪽의"},{"en":"refrigerator","ko":"냉장고"},{"en":"forever","ko":"영원히"},{"en":"practice","ko":"연습하다; 연습"},{"en":"academy","ko":"(특수 분야의) 학교, 학원"}]},{"label":"DAY 37","words":[{"en":"stay","ko":"머무르다; 머무름, 방문"},{"en":"dolphin","ko":"돌고래"},{"en":"daily","ko":"매일, 날마다; 매일의"},{"en":"age","ko":"나이, 연령"},{"en":"shock","ko":"충격, 충격적인 일; 충격을 주다"},{"en":"cafeteria","ko":"구내식당, 카페테리아"},{"en":"own","ko":"자기 자신의; 소유하다"},{"en":"plate","ko":"접시"},{"en":"sour","ko":"신, 시큼한"},{"en":"onion","ko":"양파"},{"en":"useful","ko":"유용한, 쓸모 있는"},{"en":"century","ko":"세기; 1세기, 100년"}]},{"label":"DAY 38","words":[{"en":"block","ko":"덩어리, 블록, 토막; 한 구획[블록]; (길·통로 등을) 막다"},{"en":"war","ko":"전쟁"},{"en":"basic","ko":"기본적인, 기초적인"},{"en":"connect","ko":"연결하다, 잇다"},{"en":"healthy","ko":"건강한"},{"en":"playground","ko":"운동장, 놀이터"},{"en":"over","ko":"~ 위에[로]; ~ 이상의"},{"en":"skate","ko":"스케이트를 타다; 스케이트"},{"en":"outside","ko":"밖에[으로]; ~의 밖에"},{"en":"invent","ko":"발명하다"},{"en":"character","ko":"성격, 성질; 등장인물, 캐릭터"},{"en":"textbook","ko":"교과서"}]},{"label":"DAY 39","words":[{"en":"corner","ko":"구석, 모서리; (길)모퉁이"},{"en":"stress","ko":"스트레스, 압박"},{"en":"true","ko":"사실인; 진짜의"},{"en":"dead","ko":"죽은"},{"en":"bubble","ko":"거품, 비눗방울"},{"en":"miss","ko":"놓치다, 빗나가다; (늦어서) 놓치다; 그리워하다"},{"en":"farmer","ko":"농부"},{"en":"print","ko":"인쇄하다; 출판하다, 발행하다"},{"en":"solve","ko":"(문제를) 풀다, 해결하다"},{"en":"culture","ko":"문화"},{"en":"condition","ko":"상태; 조건"},{"en":"tonight","ko":"오늘 밤에; 오늘 밤"}]},{"label":"DAY 40","words":[{"en":"toe","ko":"발가락"},{"en":"feed","ko":"먹이다, 먹이를 주다"},{"en":"beauty","ko":"아름다움, 미"},{"en":"message","ko":"메시지"},{"en":"dialogue","ko":"(책·연극·영화 속의) 대화"},{"en":"countryside","ko":"시골, 지방"},{"en":"enemy","ko":"적; 적군, 적국"},{"en":"celebrate","ko":"축하하다, 기념하다"},{"en":"certain","ko":"확신하는, 틀림없는"},{"en":"adventure","ko":"모험"},{"en":"rough","ko":"(표면이) 거친, 고르지 않은"},{"en":"point","ko":"요점, 핵심; 득점, 점수"}]}];
+const custom = load(STORE_KEY);
+let units = (custom && custom.length) ? custom : BUILTIN;
+
+const $ = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
+const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+/* ---------- 화면 전환 ---------- */
+function show(view){
+  ["setup","data","test","result"].forEach(v => $("#view-"+v).classList.toggle("hidden", v !== view));
+  $$("#tabs button").forEach(b => b.classList.toggle("on", b.dataset.view === view));
+  $("#tabs").classList.toggle("hidden", view === "test");
+  if(view === "setup") renderSetup();
+  if(view === "data"){ $("#dataText").value = unitsToText(units); renderSource(); }
+  window.scrollTo(0,0);
+}
+$$("#tabs button").forEach(b => b.addEventListener("click", () => show(b.dataset.view)));
+document.addEventListener("click", e => { const g = e.target.closest("[data-goto]"); if(g) show(g.dataset.goto); });
+
+/* ---------- 텍스트 형식 <-> 데이터 ---------- */
+function unitsToText(us){
+  return us.map(u => "# " + u.label + "\n" + u.words.map(w => w.en + " | " + w.ko).join("\n")).join("\n\n");
+}
+function textToUnits(text){
+  const out = []; let cur = null; const bad = [];
+  text.split(/\r?\n/).forEach((raw, i) => {
+    const line = raw.trim();
+    if(!line) return;
+    if(line.startsWith("#")){
+      cur = { label: line.replace(/^#+\s*/, "") || ("범위 " + (out.length+1)), words: [] };
+      out.push(cur); return;
+    }
+    const parts = line.split(/\s*[|\t]\s*/);
+    if(parts.length < 2 || !parts[0] || !parts[1]){ bad.push(i+1); return; }
+    if(!cur){ cur = { label: "범위 1", words: [] }; out.push(cur); }
+    cur.words.push({ en: parts[0].trim(), ko: parts.slice(1).join(", ").trim() });
+  });
+  return { units: out.filter(u => u.words.length), bad };
+}
+
+$("#saveData").addEventListener("click", () => {
+  const { units: us, bad } = textToUnits($("#dataText").value);
+  const st = $("#dataStatus");
+  if(!us.length){ st.className = "status err"; st.textContent = "저장할 단어가 없어요. 형식을 확인하세요."; return; }
+  units = us; save(STORE_KEY, units); renderSource();
+  const total = us.reduce((s,u) => s + u.words.length, 0);
+  st.className = "status ok";
+  st.textContent = "저장했어요: " + us.length + "개 범위, 단어 " + total + "개."
+    + (bad.length ? "\n형식이 안 맞아 건너뛴 줄: " + bad.slice(0,15).join(", ") + (bad.length > 15 ? " 외" : "") : "");
+});
+function renderSource(){
+  const total = units.reduce((s,u) => s + u.words.length, 0);
+  $("#dataSource").textContent = (units === BUILTIN ? "기본: " + BOOK + " · " : "직접 수정한 단어장 · ") + units.length + "개 범위, " + total + "단어";
+}
+$("#resetData").addEventListener("click", () => {
+  if(!confirm("직접 고친 내용을 지우고 기본 단어장으로 되돌릴까요?")) return;
+  try{ localStorage.removeItem(STORE_KEY); }catch(e){}
+  units = BUILTIN; $("#dataText").value = unitsToText(units); renderSource();
+  $("#dataStatus").className = "status ok"; $("#dataStatus").textContent = "기본 단어장으로 되돌렸어요.";
+});
+
+/* ---------- 시험 설정 ---------- */
+const settings = Object.assign({ selected: [], count: 20, minutes: 10, mode: "mix" }, load(SETTINGS_KEY) || {});
+
+function renderSetup(){
+  const has = units.length > 0;
+  $("#noData").classList.toggle("hidden", has);
+  $("#setupForm").classList.toggle("hidden", !has);
+  if(!has) return;
+  const sel = new Set(settings.selected.filter(l => units.some(u => u.label === l)));
+  if(!sel.size) sel.add(units[0].label);
+  $("#unitChips").innerHTML = units.map((u,i) =>
+    `<label class="chip"><input type="checkbox" value="${i}" ${sel.has(u.label) ? "checked" : ""}><span>${esc(u.label)}<small>${u.words.length}단어</small></span></label>`
+  ).join("");
+  $("#qCount").value = settings.count;
+  $("#tLimit").value = settings.minutes;
+  $$("input[name=mode]").forEach(r => r.checked = r.value === settings.mode);
+  $("#rFrom").max = $("#rTo").max = units.length;
+  updatePool();
+}
+function selectedUnits(){ return $$("#unitChips input:checked").map(c => units[+c.value]); }
+function pool(){
+  const seen = new Set(), out = [];
+  selectedUnits().forEach(u => u.words.forEach(w => {
+    const k = w.en.toLowerCase() + "|" + w.ko; if(seen.has(k)) return; seen.add(k); out.push(w);
+  }));
+  return out;
+}
+function updatePool(){
+  const n = pool().length;
+  $("#poolInfo").textContent = n ? "선택한 범위의 단어: " + n + "개" : "범위를 하나 이상 고르세요.";
+  $("#qMax").textContent = "최대 " + n;
+  $("#qCount").max = n || 1;
+  $("#startBtn").disabled = !n;
+}
+$("#unitChips").addEventListener("change", updatePool);
+$("#selAll").addEventListener("click", () => { $$("#unitChips input").forEach(c => c.checked = true); updatePool(); });
+$("#selNone").addEventListener("click", () => { $$("#unitChips input").forEach(c => c.checked = false); updatePool(); });
+$("#rApply").addEventListener("click", () => {
+  let a = parseInt($("#rFrom").value, 10) || 1, b = parseInt($("#rTo").value, 10) || a;
+  if(a > b) [a, b] = [b, a];
+  $$("#unitChips input").forEach((c, i) => c.checked = (i+1) >= a && (i+1) <= b);
+  updatePool();
+});
+$("#qAll").addEventListener("click", () => { $("#qCount").value = pool().length; });
+$$("[data-t]").forEach(b => b.addEventListener("click", () => { $("#tLimit").value = b.dataset.t; }));
+
+/* ---------- 채점 ---------- */
+function stripKo(s){
+  return s.toLowerCase().replace(/[\s~∼·.,!?'"’\-]/g, "").replace(/[()\[\]]/g, "");
+}
+/* 괄호 안 쉼표는 무시하고 , ; / 로 쪼개기 */
+function splitTop(s){
+  const out = []; let depth = 0, cur = "";
+  for(const ch of s){
+    if(ch === "(" || ch === "[") depth++;
+    if(ch === ")" || ch === "]") depth = Math.max(0, depth-1);
+    if(depth === 0 && /[,;/]/.test(ch)){ out.push(cur); cur = ""; } else cur += ch;
+  }
+  out.push(cur);
+  return out.map(x => x.trim()).filter(Boolean);
+}
+/* "결정[결심]하다" → 결정하다, 결심하다 / "[시간·장소] 떨어져" → 떨어져 / "(실내의) 바닥" → 바닥 */
+function koVariants(meaning){
+  const out = new Set();
+  const add = m => {
+    out.add(stripKo(m));
+    const noParen = m.replace(/\([^)]*\)/g, "");
+    out.add(stripKo(noParen));
+    [m, noParen].forEach(x => out.add(stripKo(x.replace(/^\s*[~∼]\s*[을를이가에의와과은는]?\s*/, ""))));
+  };
+  splitTop(meaning).forEach(sense => {
+    const base = sense.replace(/\[[^\]]*\]/g, " ");          // 대괄호 내용 빼기
+    add(base);
+    // 대체 표현: 앞 단어의 끝부분을 괄호 안 표현으로 바꿈
+    const m = sense.match(/(\S+)\[([^\]]+)\]/);
+    if(m){
+      m[2].split(/\s*,\s*/).forEach(alt => {
+        const head = m[1];
+        const swapped = alt.length >= head.length ? alt : head.slice(0, head.length - alt.length) + alt;
+        add((sense.slice(0, m.index) + swapped + sense.slice(m.index + m[0].length)).replace(/\[[^\]]*\]/g, " "));
+      });
+    }
+  });
+  out.delete("");
+  return out;
+}
+function enVariants(word){
+  const out = new Set();
+  word.split(/\s*[\/,;]\s*/).filter(Boolean).forEach(w => {
+    const norm = s => s.toLowerCase().replace(/[’]/g, "'").replace(/\s+/g, " ").replace(/[.]$/, "").trim();
+    out.add(norm(w.replace(/[()]/g, "")));
+    out.add(norm(w.replace(/\([^)]*\)/g, "")));
+  });
+  out.delete("");
+  return out;
+}
+function grade(q, ans){
+  const a = ans.trim(); if(!a) return false;
+  if(q.type === "spell"){
+    const v = enVariants(q.word.en);
+    const norm = a.toLowerCase().replace(/[’]/g, "'").replace(/\s+/g, " ").replace(/[.]$/, "").trim();
+    return v.has(norm);
+  }
+  const v = koVariants(q.word.ko);
+  return splitTop(a).map(stripKo).filter(Boolean).some(p => v.has(p));
+}
+
+/* ---------- 시험 진행 ---------- */
+let test = null, tick = null;
+function shuffle(a){ for(let i = a.length-1; i > 0; i--){ const j = Math.floor(Math.random()*(i+1)); [a[i],a[j]] = [a[j],a[i]]; } return a; }
+
+function startTest(words, minutes, mode){
+  const picked = shuffle(words.slice());
+  const types = picked.map((_, i) => mode === "mix" ? (i % 2 ? "spell" : "meaning") : mode);
+  shuffle(types);
+  test = {
+    qs: picked.map((w, i) => ({ word: w, type: types[i], answer: "", override: false })),
+    i: 0, start: Date.now(), limitMs: minutes > 0 ? minutes * 60000 : 0, endedAt: null, mode, minutes
+  };
+  renderNav(); renderQ(); show("test");
+  clearInterval(tick);
+  tick = setInterval(updateTimer, 250); updateTimer();
+  setTimeout(() => $("#qAnswer").focus(), 50);
+}
+
+$("#startBtn").addEventListener("click", () => {
+  const p = pool();
+  let n = Math.max(1, Math.min(p.length, parseInt($("#qCount").value, 10) || 1));
+  let m = Math.max(0, parseInt($("#tLimit").value, 10) || 0);
+  const mode = ($$("input[name=mode]").find(r => r.checked) || {}).value || "mix";
+  settings.selected = selectedUnits().map(u => u.label);
+  settings.count = n; settings.minutes = m; settings.mode = mode;
+  save(SETTINGS_KEY, settings);
+  startTest(shuffle(p.slice()).slice(0, n), m, mode);
+});
+
+function fmt(ms){
+  const s = Math.max(0, Math.ceil(ms/1000));
+  return String(Math.floor(s/60)).padStart(2,"0") + ":" + String(s%60).padStart(2,"0");
+}
+function updateTimer(){
+  if(!test) return;
+  const el = $("#timer"), used = Date.now() - test.start;
+  if(test.limitMs){
+    const left = test.limitMs - used;
+    el.textContent = "⏱ " + fmt(left);
+    el.classList.toggle("warn", left <= 60000);
+    if(left <= 0){ finish(true); }
+  }else{
+    el.textContent = "⏱ " + fmt(used); el.classList.remove("warn");
+  }
+}
+
+function saveCurrent(){ if(test) test.qs[test.i].answer = $("#qAnswer").value; }
+function renderQ(){
+  const q = test.qs[test.i], n = test.qs.length;
+  const spell = q.type === "spell";
+  $("#qType").textContent = spell ? "철자 쓰기" : "뜻 쓰기";
+  $("#qType").classList.toggle("spell", spell);
+  $("#qPrompt").textContent = spell ? q.word.ko : q.word.en;
+  $("#qHint").textContent = spell ? "이 뜻의 영어 단어를 쓰세요." : "이 단어의 뜻을 한국어로 쓰세요.";
+  const inp = $("#qAnswer");
+  inp.value = q.answer;
+  inp.lang = spell ? "en" : "ko";
+  inp.placeholder = spell ? "영어로 입력" : "뜻 입력";
+  $("#prevBtn").disabled = test.i === 0;
+  $("#nextBtn").textContent = test.i === n-1 ? "제출" : "다음 →";
+  const done = test.qs.filter(x => x.answer.trim()).length;
+  $("#progText").textContent = (test.i+1) + " / " + n;
+  $("#progBar").style.width = (done / n * 100) + "%";
+  $$("#qNav button").forEach((b, k) => {
+    b.classList.toggle("cur", k === test.i);
+    b.classList.toggle("done", !!test.qs[k].answer.trim());
+  });
+}
+function renderNav(){
+  $("#qNav").innerHTML = test.qs.map((_, k) => `<button data-k="${k}">${k+1}</button>`).join("");
+}
+function go(k){ saveCurrent(); test.i = Math.max(0, Math.min(test.qs.length-1, k)); renderQ(); $("#qAnswer").focus(); }
+
+$("#qNav").addEventListener("click", e => { const b = e.target.closest("button"); if(b) go(+b.dataset.k); });
+$("#prevBtn").addEventListener("click", () => go(test.i - 1));
+$("#nextBtn").addEventListener("click", () => {
+  if(test.i === test.qs.length-1) trySubmit(); else go(test.i + 1);
+});
+$("#qAnswer").addEventListener("input", () => { saveCurrent(); renderQ(); });
+$("#qAnswer").addEventListener("keydown", e => {
+  if(e.key === "Enter" && !e.isComposing){ e.preventDefault(); $("#nextBtn").click(); }
+});
+$("#submitBtn").addEventListener("click", trySubmit);
+function trySubmit(){
+  saveCurrent();
+  const blank = test.qs.filter(q => !q.answer.trim()).length;
+  if(blank && !confirm("안 푼 문제가 " + blank + "개 있어요. 그래도 제출할까요?")) return;
+  finish(false);
+}
+
+function finish(timeUp){
+  if(!test || test.endedAt) return;
+  saveCurrent();
+  clearInterval(tick);
+  test.endedAt = Date.now(); test.timeUp = timeUp;
+  test.qs.forEach(q => q.correct = grade(q, q.answer));
+  if(timeUp) alert("시간 끝! 자동으로 제출했어요.");
+  renderResult(); show("result");
+}
+
+/* ---------- 결과 ---------- */
+function isRight(q){ return q.correct || q.override; }
+function renderResult(){
+  const n = test.qs.length, right = test.qs.filter(isRight).length;
+  $("#resScore").textContent = right + " / " + n + "  (" + Math.round(right/n*100) + "점)";
+  $("#resMeta").textContent = "걸린 시간 " + fmt(test.endedAt - test.start) + (test.timeUp ? " · 시간 초과로 자동 제출" : "");
+  const onlyWrong = $("#onlyWrong").checked;
+  $("#resBody").innerHTML = test.qs.map((q, k) => {
+    const ok = isRight(q);
+    if(onlyWrong && ok) return "";
+    const spell = q.type === "spell";
+    const prompt = spell ? q.word.ko : q.word.en;
+    const correct = spell ? q.word.en : q.word.ko;
+    const yours = q.answer.trim();
+    let action = "";
+    if(!q.correct && yours) action = `<button class="btn small" data-ov="${k}">${q.override ? "인정 취소" : "정답 인정"}</button>`;
+    return `<tr class="${ok ? "ok" : "bad"}">
+      <td class="mark">${ok ? "○" : "✕"}</td>
+      <td><div class="tag">${k+1}. ${spell ? "철자 쓰기" : "뜻 쓰기"}</div><b>${esc(prompt)}</b></td>
+      <td><div class="yours ${yours ? "" : "blank"}">${yours ? esc(yours) : "(빈칸)"}</div>
+          ${ok && !q.override ? "" : `<div>정답: <b>${esc(correct)}</b></div>`}
+          ${q.override ? `<div class="tag">직접 인정함</div>` : ""}</td>
+      <td style="text-align:right">${action}</td></tr>`;
+  }).join("") || `<tr><td class="empty">틀린 문제가 없어요. 잘했어요!</td></tr>`;
+  $("#retryWrong").disabled = right === n;
+}
+$("#resBody").addEventListener("click", e => {
+  const b = e.target.closest("[data-ov]"); if(!b) return;
+  const q = test.qs[+b.dataset.ov]; q.override = !q.override; renderResult();
+});
+$("#onlyWrong").addEventListener("change", renderResult);
+$("#retryWrong").addEventListener("click", () => {
+  const wrong = test.qs.filter(q => !isRight(q)).map(q => q.word);
+  if(wrong.length) startTest(wrong, test.minutes, test.mode);
+});
+$("#newTest").addEventListener("click", () => { test = null; show("setup"); });
+
+/* 시험 중 페이지 이탈 경고 */
+window.addEventListener("beforeunload", e => { if(test && !test.endedAt){ e.preventDefault(); e.returnValue = ""; } });
+
+show("setup");
+</script>
+</body>
+</html>
