@@ -2,7 +2,16 @@
 <html lang="ko">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#2f5bea">
+<meta name="description" content="주니어 능률 VOCA STARTER 2 단어 시험 — DAY 범위, 문제 수, 타이머, 뜻·철자 쓰기">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="단어 테스트">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <title>단어 테스트</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
 <style>
@@ -20,7 +29,7 @@
 body{margin:0;background:var(--bg);color:var(--ink);
   font-family:Pretendard,-apple-system,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;
   -webkit-text-size-adjust:100%}
-.wrap{max-width:720px;margin:0 auto;padding:16px 16px 48px}
+.wrap{max-width:720px;margin:0 auto;padding:calc(16px + env(safe-area-inset-top)) calc(16px + env(safe-area-inset-right)) calc(48px + env(safe-area-inset-bottom)) calc(16px + env(safe-area-inset-left))}
 header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:4px 0 16px}
 h1{font-size:20px;margin:0;letter-spacing:-.02em}
 .tabs{display:flex;gap:4px;background:var(--line);padding:3px;border-radius:10px}
@@ -58,7 +67,7 @@ textarea{min-height:240px;font-family:ui-monospace,Menlo,Consolas,monospace;font
 .status.ok{color:var(--ok)}
 .empty{text-align:center;color:var(--sub);padding:28px 8px;line-height:1.6}
 /* test */
-.topbar{position:sticky;top:0;z-index:5;background:var(--bg);padding:8px 0 10px;display:flex;justify-content:space-between;align-items:center;gap:10px}
+.topbar{position:sticky;top:env(safe-area-inset-top);z-index:5;background:var(--bg);padding:8px 0 10px;display:flex;justify-content:space-between;align-items:center;gap:10px}
 .timer{font-variant-numeric:tabular-nums;font-weight:700;font-size:18px}
 .timer.warn{color:var(--bad)}
 .progress{height:6px;background:var(--line);border-radius:6px;overflow:hidden;flex:1}
@@ -537,6 +546,11 @@ $("#newTest").addEventListener("click", () => { test = null; show("setup"); });
 window.addEventListener("beforeunload", e => { if(test && !test.endedAt){ e.preventDefault(); e.returnValue = ""; } });
 
 show("setup");
+
+/* 홈 화면 앱(PWA): 오프라인에서도 열리게 */
+if("serviceWorker" in navigator && location.protocol === "https:"){
+  window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
+}
 </script>
 </body>
 </html>
